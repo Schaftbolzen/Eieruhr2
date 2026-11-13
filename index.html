@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Picard's Eggtimer</title>
+    <style>
+        :root {
+            --lcars-bg: #000000;
+            --lcars-orange: #FF9C00;
+            --lcars-red: #CC6666;
+            --text-dark: #000000;
+        }
+
+        body {
+            background-color: var(--lcars-bg);
+            color: var(--lcars-orange);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+            overflow: hidden; /* Verhindert Scrollen auf dem Handy */
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            background-color: var(--lcars-orange);
+            color: var(--text-dark);
+            width: 100%;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 5px 0;
+            margin-bottom: 15px;
+        }
+
+        /* Das Bild und der Ring */
+        .image-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #main-image {
+            width: 250px;
+            height: 250px;
+            object-fit: contain;
+            position: absolute;
+            z-index: 1;
+        }
+
+        #progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 250px;
+            z-index: 2;
+            transform: rotate(-90deg); /* Startet oben */
+        }
+
+        .ring-bg {
+            fill: none;
+            stroke: transparent;
+            stroke-width: 6;
+        }
+
+        .ring-fill {
+            fill: none;
+            stroke: var(--lcars-orange);
+            stroke-width: 6;
+            stroke-linecap: butt;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        /* Timer-Reihen */
+        .timer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .time-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 80px;
+            text-align: left;
+        }
+
+        .time-inputs {
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+            color: var(--lcars-orange);
+        }
+
+        .time-inputs select {
+            background-color: var(--lcars-bg);
+            color: var(--lcars-orange);
+            border: 1px solid #333;
+            border-radius: 3px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 0.9rem;
+            padding: 2px;
+            margin: 0 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .timer-buttons {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-icon {
+            background-color: var(--lcars-orange);
+            color: var(--text-dark);
+            border: none;
+            border-radius: 3px;
+            font-size: 1rem;
+            font-weight: bold;
+            width: 30px;
+            height: 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-icon.stop {
+            background-color: var(--lcars-red);
+        }
+
+        .btn-icon:active {
+            opacity: 0.7;
+        }
+
+        /* Bottom Buttons */
+        .bottom-buttons {
+            width: 100%;
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .btn-main {
+            background-color: var(--lcars-red);
+            color: white;
+            border: none;
+            border-radius: 3px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 0.9rem;
+            padding: 6px;
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            background-color: var(--lcars-orange);
+            color: var(--text-dark);
+            border: none;
+            border-radius: 3px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 0.9rem;
+            padding: 6px;
+            cursor: pointer;
+        }
+
+        .btn-main:active, .btn-secondary:active {
+            opacity: 0.7;
+        }
+
+        /* Hidden Audio Element */
+        audio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div class="header">Picard's Eggtimer</div>
+
+    <div class="image-container">
+        <!-- Das Logo (statisch) -->
+        <img id="main-image" src="starfleet.png" alt="Starfleet">
+        <!-- Der Ring (SVG) -->
+        <svg id="progress-ring" viewBox="0 0 250 250">
+            <circle class="ring-bg" cx="125" cy="125" r="120"></circle>
+            <circle id="ring-circle" class="ring-fill" cx="125" cy="125" r="120"></circle>
+        </svg>
+    </div>
+
+    <!-- Timer 1 -->
+    <div class="timer-row" id="timer-1">
+        <div class="time-display">00:00:00</div>
+        <div class="time-inputs">
+            <select class="input-h"><option value="0">0</option></select>:
+            <select class="input-m"><option value="0">00</option></select>:
+            <select class="input-s"><option value="0">00</option></select>
+        </div>
+        <div class="timer-buttons">
+            <button class="btn-icon stop" onclick="timer1.stop()">■</button>
+            <button class="btn-icon" onclick="timer1.start()">▶</button>
+        </div>
+    </div>
+
+    <!-- Timer 2 -->
+    <div class="timer-row" id="timer-2">
+        <div class="time-display">00:00:00</div>
+        <div class="time-inputs">
+            <select class="input-h"><option value="0">0</option></select>:
+            <select class="input-m"><option value="0">00</option></select>:
+            <select class="input-s"><option value="0">00</option></select>
+        </div>
+        <div class="timer-buttons">
+            <button class="btn-icon stop" onclick="timer2.stop()">■</button>
+            <button class="btn-icon" onclick="timer2.start()">▶</button>
+        </div>
+    </div>
+
+    <!-- Timer 3 -->
+    <div class="timer-row" id="timer-3">
+        <div class="time-display">00:00:00</div>
+        <div class="time-inputs">
+            <select class="input-h"><option value="0">0</option></select>:
+            <select class="input-m"><option value="0">00</option></select>:
+            <select class="input-s"><option value="0">00</option></select>
+        </div>
+        <div class="timer-buttons">
+            <button class="btn-icon stop" onclick="timer3.stop()">■</button>
+            <button class="btn-icon" onclick="timer3.start()">▶</button>
+        </div>
+    </div>
+
+    <!-- Bottom Buttons -->
+    <div class="bottom-buttons">
+        <button class="btn-main" onclick="engageAll()">Engage All</button>
+        <button class="btn-secondary" onclick="stopAlarm()">ALARM AUS</button>
+    </div>
+</div>
+
+<!-- Audio & GIF (Versteckt) -->
+<audio id="alarm-audio" src="engage.wav"></audio>
+<img id="picard-gif" src="picard.gif" style="display:none;">
+
+<script>
+    // --- Setup der Dropdowns ---
+    function populateDropdowns() {
+        const selectsH = document.querySelectorAll('.input-h');
+        const selectsM = document.querySelectorAll('.input-m');
+        const selectsS = document.querySelectorAll('.input-s');
+
+        // Stunden (0-60)
+        for (let i = 1; i <= 60; i++) {
+            selectsH.forEach(sel => {
+                let opt = document.createElement('option');
+                opt.value = i;
+                opt.text = i;
+                sel.add(opt);
+            });
+        }
+        // Minuten & Sekunden (0-59)
+        for (let i = 1; i < 60; i++) {
+            let displayVal = i.toString().padStart(2, '0');
+            selectsM.forEach(sel => {
+                let opt = document.createElement('option');
+                opt.value = i;
+                opt.text = displayVal;
+                sel.add(opt);
+            });
+            selectsS.forEach(sel => {
+                let opt = document.createElement('option');
+                opt.value = i;
+                opt.text = displayVal;
+                sel.add(opt);
+            });
+        }
+    }
+    populateDropdowns();
+
+    // --- Standardwerte setzen (Minute auf 5) ---
+    document.querySelectorAll('.input-m').forEach(sel => sel.value = "5");
+
+    // --- Timer Klasse ---
+    class Timer {
+        constructor(rowId) {
+            this.row = document.getElementById(rowId);
+            this.display = this.row.querySelector('.time-display');
+            this.selH = this.row.querySelector('.input-h');
+            this.selM = this.row.querySelector('.input-m');
+            this.selS = this.row.querySelector('.input-s');
+            
+            this.remaining = 0;
+            this.total = 0;
+            this.interval = null;
+            this.isAlarming = false;
+
+            // Event Listener für Dropdowns
+            this.selH.addEventListener('change', () => this.updateTimeFromInputs());
+            this.selM.addEventListener('change', () => this.updateTimeFromInputs());
+            this.selS.addEventListener('change', () => this.updateTimeFromInputs());
+
+            this.updateTimeFromInputs();
+        }
+
+        updateTimeFromInputs() {
+            if (this.interval || this.isAlarming) return;
+            let h = parseInt(this.selH.value) || 0;
+            let m = parseInt(this.selM.value) || 0;
+            let s = parseInt(this.selS.value) || 0;
+            this.total = h * 3600 + m * 60 + s;
+            this.remaining = this.total;
+            this.display.textContent = this.formatTime(this.remaining);
+        }
+
+        formatTime(secs) {
+            let h = Math.floor(secs / 3600);
+            let m = Math.floor((secs % 3600) / 60);
+            let s = secs % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        start() {
+            if (this.interval || this.isAlarming) return;
+            this.updateTimeFromInputs();
+            if (this.remaining <= 0) return;
+
+            this.interval = setInterval(() => {
+                this.remaining--;
+                this.display.textContent = this.formatTime(this.remaining);
+                updateRing(this.remaining / this.total);
+                
+                if (this.remaining <= 0) {
+                    this.stop();
+                    this.isAlarming = true;
+                    this.display.style.color = "var(--lcars-red)";
+                    triggerAlarm();
+                }
+            }, 1000);
+        }
+
+        stop() {
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = null;
+            }
+            if (this.isAlarming) {
+                this.isAlarming = false;
+                this.display.style.color = "var(--lcars-orange)";
+            }
+            this.updateTimeFromInputs();
+            // Setze Ring zurück, falls kein anderer Timer läuft
+            if (!timer1.interval && !timer2.interval && !timer3.interval) {
+                updateRing(1);
+            }
+        }
+    }
+
+    // --- Ring Update ---
+    const ringCircle = document.getElementById('ring-circle');
+    const ringRadius = 120;
+    const ringCircumference = 2 * Math.PI * ringRadius;
+    ringCircle.style.strokeDasharray = ringCircumference;
+    
+    function updateRing(fraction) {
+        // fraction: 1 = voll (100%), 0 = leer (0%)
+        // stroke-dashoffset: 0 = voll, ringCircumference = leer
+        const offset = ringCircumference - (fraction * ringCircumference);
+        ringCircle.style.strokeDashoffset = offset;
+    }
+    updateRing(1); // Initial voll
+
+    // --- Timer Instanzen ---
+    const timer1 = new Timer('timer-1');
+    const timer2 = new Timer('timer-2');
+    const timer3 = new Timer('timer-3');
+
+    // --- Engage All ---
+    function engageAll() {
+        stopAlarm();
+        timer1.start();
+        timer2.start();
+        timer3.start();
+    }
+
+    // --- Alarm Logik ---
+    const audioElement = document.getElementById('alarm-audio');
+    const mainImage = document.getElementById('main-image');
+    const picardGif = document.getElementById('picard-gif');
+    let alarmInterval = null;
+    let alarmCount = 0;
+
+    function triggerAlarm() {
+        // Verhindere doppelte Alarme
+        if (alarmInterval) return;
+
+        // Wechsel zum GIF
+        mainImage.src = "picard.gif";
+        alarmCount = 0;
+
+        const playSound = () => {
+            if (alarmCount >= 3) {
+                stopAlarm();
+                return;
+            }
+            audioElement.currentTime = 0;
+            audioElement.play().catch(e => console.log("Audio play failed:", e));
+            
+            // Warte auf das Ende des Sounds (ca. 3-4 Sekunden, je nach WAV)
+            // Wir nutzen das 'ended' Event für Präzision
+            audioElement.onended = () => {
+                alarmCount++;
+                if (alarmCount < 3) {
+                    setTimeout(playSound, 500); // Kurze Pause
+                } else {
+                    stopAlarm();
+                }
+            };
+            
+            // Fallback falls 'ended' nicht feuert (z.B. bei stummem Modus)
+            setTimeout(() => {
+                if (alarmCount < 3) {
+                    alarmCount++;
+                    if (alarmCount < 3) {
+                        setTimeout(playSound, 500);
+                    } else {
+                        stopAlarm();
+                    }
+                }
+            }, 5000); 
+        };
+
+        playSound();
+    }
+
+    function stopAlarm() {
+        if (alarmInterval) {
+            clearInterval(alarmInterval);
+            alarmInterval = null;
+        }
+        audioElement.pause();
+        audioElement.currentTime = 0;
+        mainImage.src = "starfleet.png"; // Zurück zum Logo
+        
+        // Stoppe alle klingelnden Timer
+        timer1.stop();
+        timer2.stop();
+        timer3.stop();
+    }
+</script>
+
+</body>
+</html>
