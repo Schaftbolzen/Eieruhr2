@@ -30,13 +30,21 @@ jobs:
           npm install -g @capacitor/cli
           npm install @capacitor/core @capacitor/android
 
+      - name: Prepare Web Directory
+        run: |
+          mkdir -p www
+          cp index.html www/
+          cp *.png www/ 2>/dev/null || true
+          cp *.gif www/ 2>/dev/null || true
+          cp *.wav www/ 2>/dev/null || true
+
       - name: Initialize Capacitor
         run: |
           if [ ! -f package.json ]; then
             npm init -y
           fi
           if [ ! -f capacitor.config.json ]; then
-            npx cap init "PicardsEggtimer" "com.picard.eggtimer" --web-dir="."
+            npx cap init "PicardsEggtimer" "com.picard.eggtimer" --web-dir="www"
           fi
           if [ ! -d "android" ]; then
             npx cap add android
